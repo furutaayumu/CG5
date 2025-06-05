@@ -22,6 +22,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	//DirectXCommonクラスが管理している、コマンドリストの取得
 	ID3D12GraphicsCommandList* commandList = dxCommon->GetCommandList();
 
+
 	//RootSignature作成
 	//構造体にデータを用意する
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
@@ -66,20 +67,20 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// 頂点シェーダの読み込みとコンパイル
 	Shader vs;
-	vs.Load(L"Resources/shaders/TestVS.hlsl", "vs_5_0");
-	assert(vs.GetBlob() != nullptr);
+	vs.LoadDxc(L"Resources/shaders/TestVS.hlsl", L"vs_6_0");//変更
+	assert(vs.GetDxcBlob() != nullptr);
 
 	// ピクセルシェーダの読み込みとコンパイル
 	Shader ps;
-	ps.Load(L"Resources/shaders/TestPS.hlsl", "ps_5_0");
-	assert(ps.GetBlob() != nullptr);
+	ps.LoadDxc(L"Resources/shaders/TestPS.hlsl", L"ps_6_0");//変更
+	assert(ps.GetDxcBlob() != nullptr);
 	
 	//PSO(PipelineStateObject)の生成
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPiplineStateDesc{};
 	graphicsPiplineStateDesc.pRootSignature = rootSignature;//RootSignature
 	graphicsPiplineStateDesc.InputLayout = inputLayoutDesc;//InputLayout
-	graphicsPiplineStateDesc.VS = {vs.GetBlob()->GetBufferPointer(), vs.GetBlob()->GetBufferSize()}; // VertexShader
-	graphicsPiplineStateDesc.PS = {ps.GetBlob()->GetBufferPointer(), ps.GetBlob()->GetBufferSize()}; // PixelShader
+	graphicsPiplineStateDesc.VS = {vs.GetDxcBlob()->GetBufferPointer(), vs.GetDxcBlob()->GetBufferSize()}; // VertexShader
+	graphicsPiplineStateDesc.PS = {ps.GetDxcBlob()->GetBufferPointer(), ps.GetDxcBlob()->GetBufferSize()}; // PixelShader
 	graphicsPiplineStateDesc.BlendState = blendDesc;//BlendState
 	graphicsPiplineStateDesc.RasterizerState = rasterizerDesc;//RasterizerState
 
@@ -137,20 +138,21 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	//メインループ
 	while (true) {
-		// エンジンの更新
-		if (KamataEngine::Update()) {
+		//エンジンの更新
+		if (KamataEngine::Update())
+		{
 			break;
 		}
 		// 描画開始
 		dxCommon->PreDraw();
 
-		// コマンドを詰む
-		commandList->SetGraphicsRootSignature(rootSignature);     // RootSignatureの設定
-		commandList->SetPipelineState(graphicsPiplineState);      // PSOの設定をする
-		commandList->IASetVertexBuffers(0, 1, &vertexBufferView); // VBVの設定をする
-		// トポロジの設定
+		//コマンドを詰む
+		commandList->SetGraphicsRootSignature(rootSignature);//RootSignatureの設定
+		commandList->SetPipelineState(graphicsPiplineState);//PSOの設定をする
+		commandList->IASetVertexBuffers(0, 1, &vertexBufferView);//VBVの設定をする
+		//トポロジの設定
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		// 頂点数、インデックス数、インデックスの開始位置、インデックスのオフセット
+		//頂点数、インデックス数、インデックスの開始位置、インデックスのオフセット
 		commandList->DrawInstanced(3, 1, 0, 0);
 
 		// 描画終了
