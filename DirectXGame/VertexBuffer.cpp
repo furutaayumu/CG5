@@ -63,4 +63,11 @@ D3D12_VERTEX_BUFFER_VIEW* VertexBuffer::GetView()
 VertexBuffer::VertexBuffer() {}
 
 //デストラクタ
-VertexBuffer::~VertexBuffer() {}
+VertexBuffer::~VertexBuffer() 
+{
+	if (vertexBuffer_)
+	{
+		vertexBuffer_->Release();
+		vertexBuffer_ = nullptr;
+	}
+}

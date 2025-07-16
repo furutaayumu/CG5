@@ -6,6 +6,7 @@
 #include "Shader.h"
 #include "VertexBuffer.h"
 #include <Windows.h>
+#include "WorldTransformEx.h"
 // #include<d3dcompiler.h>
 // グローバル関数
 using namespace KamataEngine;
@@ -136,7 +137,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// CPU側からみたHANDLEを取得しておく
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandleCPU = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-
+	
 	// 2.DSV用のViewの生成
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;                // 基本的にResourceに合わせる
@@ -193,12 +194,33 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	    rtvHandleCPU           // RTV用ディスクリプタヒープのCPU Handle
 	);
 
+	//アプリで利用する3Dモデル=================================================
+	//被写体の準備
+	Model* model = Model::CreateFromOBJ("terrain");
+
+	WorldTransformEx worldTransform;//WorldTransformExのインスタンス生成
+	worldTransform.Initialize();
+	worldTransform.scale_ = Vector3(1.0f, 1.0f, 1.0f);
+
+	//カメラの準備
+	Camera camera;
+	camera.Initialize();
+	camera.translation_ = Vector3(0.0f, 1.0f, 0.0f);
+
 	// メインループ
 	while (true) {
 		// エンジンの更新
 		if (KamataEngine::Update()) {
 			break;
 		}
+
+		//World変換行列の定数バッファへの転送
+		worldTransform.rotation_.y += 0.005f;//適当な回転角度(ラジアン)
+		worldTransform.UpdateMatrix();//UpdateMatrixメンバ関数の呼び出し	
+
+		//cameraの更新と定数バッファへの転送
+		camera.UpdateMatrix();
+
 		// ゲームシーンの更新
 		gameScene->Update();
 
@@ -240,6 +262,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// 指定した深度で画面全体をクリアする
 		commandList->ClearDepthStencilView(dsvHandleCPU, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
+		Model::PreDraw(commandList);
+		model->Draw(worldTransform, camera);
+		Model::PostDraw();
+
 		// TransitionBarrierをもとに戻し、PixelShaderが扱えるようにする
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;                      // TranslationBarrierの設定
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;                           // フラグはNONEにしておく
@@ -268,11 +294,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// commandList->DrawInstanced(3, 1, 0, 0);
 		// 画面を覆うポリゴンの描画
 		commandList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
-		// 描画終了
-		dxCommon->PostDraw();
-
+		
 		// 描画処理
 		gameScene->Draw();
+
+		// 描画終了
+		dxCommon->PostDraw();
 	}
 
 	// ゲームシーンの開放
@@ -282,6 +309,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	gameScene = nullptr;
 
 	// 解放
+	delete model;
+
 	renderTextureResource->Release();
 	srvDescriptorHeap->Release();
 	rtvDescriptorHeap->Release();
